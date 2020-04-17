@@ -200,7 +200,7 @@ void set_refresh(int r)
 //============================================================//
 
 std::string _mask_hit_fl_path("./");
-void set_mask_hit_fl_path(const char* aFl)
+void set_mask_hit_file_path(const char* aFl)
 {
   _mask_hit_fl_path  =  aFl;
   if (_mask_hit_fl_path.back() != '/' )
