@@ -23,13 +23,15 @@
 #define IDMVTXV2_MAXRUID       8
 #define IDMVTXV2_MAXRUCHN      9
 
-int init_done = 0;
-
 using namespace std;
 
 const int NSTAVE = 4;
-const bool chip_expected[NSTAVE] = {true, true, true, true};
-string stave_name[NSTAVE] = {"E103", "C105", "C104", "A105"};
+const bool stave_expected[IDMVTXV2_MAXRUID] = {true, true, true, true, false, false, false, false};
+const string stave_name[NSTAVE] = {"A105", "C104", "C105", "E103"};
+
+const std::vector<int> dead_chips[NSTAVE] = {
+    {6}, {0,3,6,7,8}, {}, {0}
+};
 
 vector<TLine*> chip_edges, dead_chip_forward, dead_chip_backward;
 
@@ -94,32 +96,39 @@ std::map < pair<int, int>, pair<int, int>> chip_map = {
   {{2,7}, {1,6}},
   {{2,8}, {1,7}},
   {{2,9}, {1,8}},
-  {{3,1}, {3,2}},
-  {{3,2}, {3,1}},
-  {{3,3}, {3,0}},
-  {{3,4}, {3,3}},
-  {{3,5}, {3,4}},
-  {{3,6}, {3,5}},
-  {{3,7}, {3,6}},
-  {{3,8}, {3,7}},
-  {{3,9}, {3,8}},
-  {{4,1}, {4,2}},
-  {{4,2}, {4,1}},
-  {{4,3}, {4,0}},
-  {{4,4}, {4,3}},
-  {{4,5}, {4,4}},
-  {{4,6}, {4,5}},
-  {{4,7}, {4,6}},
-  {{4,8}, {4,7}},
-  {{4,9}, {4,8}}
-}; //<ruid, ruchn> to <stave, chipID>
+  {{3,1}, {2,2}},
+  {{3,2}, {2,1}},
+  {{3,3}, {2,0}},
+  {{3,4}, {2,3}},
+  {{3,5}, {2,4}},
+  {{3,6}, {2,5}},
+  {{3,7}, {2,6}},
+  {{3,8}, {2,7}},
+  {{3,9}, {2,8}},
+  {{4,1}, {3,2}},
+  {{4,2}, {3,1}},
+  {{4,3}, {3,0}},
+  {{4,4}, {3,3}},
+  {{4,5}, {3,4}},
+  {{4,6}, {3,5}},
+  {{4,7}, {3,6}},
+  {{4,8}, {3,7}},
+  {{4,9}, {3,8}}
+}; //<ruid,3ruchn> to <stave, chipID>
 
-int mvtx_evnts;
+int init_done = 0;
+int mvtx_run = 0;
+int mvtx_evnts = 0;
 int mvtx_verbose = 0;
 int mvtx_refresh = -1;
 int max_npixels = 512*1024; // cut to suppress plotting events with lots of hits
-int mvtx_run = 0;
+
 const bool flip_yaxis = false;
+
+int get_nevents()
+{
+    return mvtx_evnts;
+}
 
 //-- histograms filled in event loop
 TH1F* hnevnt; // number of events
@@ -169,9 +178,7 @@ TF1* fg;
 int chipColor[] = {kBlue, kRed, kGreen+2, kMagenta+2};
 int chipMarker[] = {kFullCircle, kFullSquare, kFullDiamond, kFullCross};
 
-// Show fit to beam center
-TCanvas* cBeamCenter = nullptr;
-const bool show_beam_fit = true;
+std::vector<int> inc_bc_flag(IDMVTXV2_MAXRUID+1, 0);
 
 unsigned short decode_row(int hit)
 {
@@ -207,7 +214,15 @@ void set_mask_hit_file_path(const char* aFl)
     _mask_hit_fl_path += '/';
 }
 
+//============================================================//
 
+// Show fit to beam center
+TCanvas* cBeamCenter = nullptr;
+bool show_beam_fit = false;
+void set_beam_fit( bool flag )
+{
+  show_beam_fit = flag;
+}
 
 //============================================================//
 
@@ -339,107 +354,11 @@ int process_event (Event * e)
   if ( e->getEvtType() != DATAEVENT )
     return 0;
 
+  mvtx_evnts++;
 
   Packet *p = e->getPacket(2000);
   if ( p )
   {
-    bool evnt_err = false;
-  /*
-	int bad_ruchns = p->iValue(0, "BAD_RUCHNS");
-	if ( bad_ruchns > 0 )
-	{
-	if ( mvtx_verbose > 0 )
-	cout << "WARNING!! Event: " << mvtx_evnts << " Invalid RU channel IDs (really bad data)!"
-	<< " BAD_RUCHNS:" << bad_ruchns << endl;
-	}
-
-	int bad_chipids = p->iValue(0, "BAD_CHIPIDS");
-	if ( bad_chipids > 0 )
-	{
-	if ( mvtx_verbose > 0 )
-	cout << "WARNING!! Event: " << mvtx_evnts << " Invalid chip IDs (bad data)!"
-	<< " BAD_CHIPIDS:" << bad_chipids << endl;
-	}
-
-	int chipmax = p->iValue(0, "HIGHEST_CHIP") + 1;
-	if ( chipmax > NSTAVE )
-	{
-	if ( mvtx_verbose > 1 )
-	cout << "WARNING!! Event: " << mvtx_evnts << " More chips than expected!"
-	<< " NSTAVE:" << NSTAVE << " HIGHEST_CHIP:" << chipmax << endl;
-
-	chipmax = NSTAVE;
-	}
-	if ( mvtx_verbose > 2 )
-	{
-	cout << "Event:" << mvtx_evnts << " chipmax:" << chipmax << endl;
-	}
-	float mrow_chip0 = -1;
-	float mcol_chip0 = -1;
-
-	int excess_data_bytes = p->iValue(0, "EXCESS_DATA_BYTES");
-	if ( excess_data_bytes>0 )
-	{
-	if ( mvtx_verbose > 1 )
-	cout << "WARNING!! Event: " << mvtx_evnts << " Data found past chip trailer"
-	<< " EXCESS_DATA_BYTES: " << excess_data_bytes << endl;
-	}
-	bool evnt_err = false;
-	for ( int ichip = 0; ichip < NSTAVE; ichip++)
-	{
-	int header_found = p->iValue(ichip, "HEADER_FOUND");
-	int trailer_found = p->iValue(ichip, "TRAILER_FOUND");
-	int bunchcounter = p->iValue(ichip, "BUNCHCOUNTER");
-	int unexpected_bytes = p->iValue(ichip, "UNEXPECTED_BYTES");
-	int readout_flags = p->iValue(ichip, "READOUT_FLAGS");
-        //cout << "HEADER_FOUND: " << header_found << " TRAILER_FOUND: " << trailer_found << " BUNCHCOUNTER: " << bunchcounter << endl;
-
-        bool has_warning = false;
-        bool has_error = false;
-        if (chip_expected[ichip])
-        {
-        if (header_found==0 || trailer_found==0)
-        {
-        if ( mvtx_verbose > 1 )
-        cout << "WARNING!! Event: " << mvtx_evnts << " Missing chip " << ichip << " HEADER_FOUND: " << header_found << " TRAILER_FOUND: " << trailer_found << " BUNCHCOUNTER: " << bunchcounter << endl;
-        has_warning = true;
-        }
-        if ( (header_found + trailer_found) == 1 )
-        {
-        if ( mvtx_verbose > 1 )
-        cout << "ERROR!! Event: " << mvtx_evnts << " header and trailer have different states for chip " << ichip << " HEADER_FOUND: " << header_found << " TRAILER_FOUND: " << trailer_found << " BUNCHCOUNTER: " << bunchcounter << endl;
-        has_error = true;
-        evnt_err = true;
-        }
-        }
-        else
-        {
-        if (header_found!=0 || trailer_found!=0)
-        {
-            if ( mvtx_verbose > 1 )
-                cout << "WARNING!! Event: " << mvtx_evnts << " Unexpected chip " << ichip << " HEADER_FOUND: " << header_found << " TRAILER_FOUND: " << trailer_found << " BUNCHCOUNTER: " << bunchcounter << endl;
-            has_warning = true;
-        }
-    }
-    if (unexpected_bytes!=0)
-    {
-        if ( mvtx_verbose > 0 )
-            cout << "WARNING!! Event: " << mvtx_evnts << " chip " << ichip << " UNEXPECTED_BYTES: " << unexpected_bytes << endl;
-        has_warning = true;
-    }
-    if (readout_flags > 0)
-    {
-        if ( mvtx_verbose > 1 )
-            cout << "WARNING!! Event: " << mvtx_evnts << " chip " << ichip << " READOUT_FLAGS: " << hex << readout_flags << dec << endl;
-        has_warning = true;
-    }
-
-    if ( has_warning )
-        hwarn->Fill(ichip);
-    if ( has_error )
-        herr->Fill(ichip);
-    }
-    */
 
     int npixels[NSTAVE] = {0};
     double mrow[NSTAVE] = {0};
@@ -447,12 +366,88 @@ int process_event (Event * e)
     double mrow_refstave = -1;
     double mcol_refstave = -1;
 
-    if ( ! evnt_err )
+    int evnt_err = p->iValue(0, "DECODER_ERROR");
+    if ( evnt_err )
+    {
+        cout << "ERROR!! Event: " << mvtx_evnts << " Decoder error different from 0 ( " << evnt_err << " )" << endl;
+
+        int bad_ruids = p->iValue(0, "BAD_RUIDS");
+        if ( bad_ruids > 0 )
+        {
+           cout << "ERROR!! Event: " << mvtx_evnts << " Invalid RU IDs (really bad data skipping event)!"
+           << " BAD_IDS:" << bad_ruids << endl;
+        }
+
+        int bad_felix_counters = p->iValue(0, "UNEXPECTED_FELIX_COUNTERS");
+        if ( bad_felix_counters > 0 )
+        {
+           cout << "ERROR!! Event: " << mvtx_evnts << " Invalid Felix counters (really bad data skipping event)!" << endl;
+        }
+
+        for ( int ruid = 0; ruid < IDMVTXV2_MAXRUID+1; ++ruid )
+        {
+            int bad_ruchns = p->iValue(ruid, "BAD_RUCHNS");
+            if ( bad_ruchns > 0 )
+            {
+                cout << "ERROR!! Event: " << mvtx_evnts << " Invalid channel IDs in RU " << ruid << endl;
+            }
+
+        }
+
+       if ( (evnt_err >> 2) & 0x1 )
+       {
+          cout << "ERROR!! Event: " << mvtx_evnts << " Bad pixel decoding col or row out of  range " << endl;
+       }
+
+       if ( (evnt_err >> 3) & 0x1 )
+       {
+          cout << "ERROR!! Event: " << mvtx_evnts << " Bad region decoding, region out of range " << endl;
+       }
+
+       if ( (evnt_err >> 4) & 0x1 )
+       {
+          cout << "ERROR!! Event: " << mvtx_evnts << " Unexpected byte from chip readout data " << endl;
+       }
+
+       if ( (evnt_err >> 5) & 0x1 )
+       {
+          cout << "ERROR!! Event: " << mvtx_evnts << " Bad data from chip readout, first byte is not a chip header or empty trailer." << endl;
+       }
+
+    }
+    else
     {
       for ( int ruid=0; ruid < IDMVTXV2_MAXRUID+1; ruid++ )
       {
         if ( p->iValue(ruid) != -1 ) //(_lanes_active info) if -1 no information for RU ruid found in the event
         {
+              int time_out  = p->iValue(ruid, "LANE_TIMEOUTS");
+              if  ( time_out > 0 )
+              {
+                 if ( mvtx_verbose > 0)
+                 {
+                    cout << "WARNING!!  Event: " << mvtx_evnts << " time out for lines ( ";
+                    for ( int i = 0; i < IDMVTXV2_MAXRUCHN+1; ++i )
+                    {
+                        if ( time_out & (1 << i) )
+                            cout << i+1 << " ";
+                    }
+                    cout << " )" << endl;
+                 }
+              }
+
+              int is_bc_inc = p->iValue(ruid, "CHECK_BC");
+              if ( is_bc_inc && (! inc_bc_flag[ruid]) )
+              {
+                  cout << "WARNING!! From event: " << mvtx_evnts << " Inconsintent BC for RU: " << (ruid - 1) << endl;
+                  inc_bc_flag[ruid] = 1;
+              }
+              if ( (! is_bc_inc) && inc_bc_flag[ruid] )
+              {
+                  cout << "WARNING!! From event: " << mvtx_evnts << " Recovered inconsintent BC for RU: " << (ruid - 1)
+                     <<" bc is " << is_bc_inc << endl;
+                  inc_bc_flag[ruid] = 0;
+              }
           for ( int ruchn = 0; ruchn < IDMVTXV2_MAXRUCHN+1; ruchn++ )
           {
             if ( p->iValue(ruid, ruchn) > 0 ) // Number of hit for RU ruid, RU channel ruchn
@@ -485,7 +480,7 @@ int process_event (Event * e)
                     h2d_chip[istave]->Fill(icol+1024*ichip, irow);
                   else
                   {
-                    h2d_chip[istave]->Fill(icol+1024*ichip,511-irow);
+                    h2d_chip[istave]->Fill(icol+1024*ichip, 511-irow);
                   }
                   if (0)
                   {
@@ -499,6 +494,14 @@ int process_event (Event * e)
               }
             }
           }
+        }
+        else
+        {
+            if ( (ruid) && (stave_expected[ruid-1]) )
+            {
+                cout << "WARNING!! Event: " << mvtx_evnts << " Expected data for RU: "\
+                     << ( ruid - 1 ) << ", but not data found." << endl;
+            }
         }
       }
 
@@ -539,40 +542,6 @@ int process_event (Event * e)
 
     }
 
-    /*
-
-    // fill regardless of the number of hits
-    hnhit_chip[ichip]->Fill(npixels);
-
-    // only fill for nonzero hits
-    if (npixels > 0  && npixels < max_npixels)
-    {
-    mrow /= (float)npixels;
-    mcol /= (float)npixels;
-
-    if ( ichip == NSTAVE - 1 )
-    {
-    mrow_chip0 = mrow;
-    mcol_chip0 = mcol;
-    }
-
-    if ( mrow_chip0 >= 0 && mcol_chip0 >= 0 )
-    {
-    hdiffrow_chip[ichip]->Fill(mrow - mrow_chip0);
-    hdiffcol_chip[ichip]->Fill(mcol - mcol_chip0);
-    }
-
-    hchip->Fill(ichip, npixels);
-    hhittime_chip[ichip]->Fill(mvtx_evnts,npixels);
-
-    if ( mvtx_verbose > 2 )
-    {
-    cout << "    chip:" << ichip << " npixels:" << npixels
-    << " mean:(" << mcol << ", " << mrow << ")" << endl;
-    }
-    }
-    } // ichip
-    */
     hnevnt->Fill(0);
     delete p;
   }
@@ -582,7 +551,6 @@ int process_event (Event * e)
   if ( mvtx_evnts % 100000 == 0 )
     cout << " processing event " << mvtx_evnts << endl;
 
-  mvtx_evnts++;
   return 0;
 }
 
@@ -592,6 +560,7 @@ int process_histos(float thresh)
 {
   int sum = 0;
   int row, col;
+  float mThr = ( thresh > 1. ) ? thresh : mvtx_evnts * thresh;
   for ( int i = 0; i < NSTAVE; i++ )
   {
     cout << endl;
@@ -601,16 +570,16 @@ int process_histos(float thresh)
     {
       for ( int iy = 1; iy <= h2d_chip[i]->GetNbinsY(); iy++ )
       {
-        if ( h2d_chip[i]->GetBinContent(ix, iy) > thresh )
+        if ( h2d_chip[i]->GetBinContent(ix, iy) > mThr )
         {
           tot++;
           if (flip_yaxis)
           {
-             row = 1023-(h2d_chip[i]->GetYaxis()->GetBinCenter(iy));
+             row = h2d_chip[i]->GetYaxis()->GetBinCenter(iy);
           }
           else
           {
-             row = h2d_chip[i]->GetYaxis()->GetBinCenter(iy);
+             row = 511 - h2d_chip[i]->GetYaxis()->GetBinCenter(iy);
           }
           col = h2d_chip[i]->GetXaxis()->GetBinCenter(ix);
           cout << " row:" << row << " col:" << col << endl;
@@ -631,9 +600,10 @@ int mask_pixels(float thresh)
   string file_name = _mask_hit_fl_path + "masklist_testbench.txt";
   ofstream write_mask_file_tb(file_name.c_str());
 
-  write_mask_file_tb << "#Connector, ChipID, Col, Row" << endl;
+  write_mask_file_tb << "#StaveId, ChipID, Col, Row" << endl;
 
   int sum = 0;
+  float mThr = ( thresh > 1. ) ? thresh : mvtx_evnts * thresh;
 
   int chipid, row, col, tot, chip_tot, prev_tot;
   for ( int i = 0; i < NSTAVE; i++ )
@@ -642,30 +612,29 @@ int mask_pixels(float thresh)
     prev_tot = 0;
     for ( int ix = 1; ix <= h2d_chip[i]->GetNbinsX(); ix++ )
     {
+      col = h2d_chip[i]->GetXaxis()->GetBinCenter(ix);
+      chipid = col/1024;
+      col = col%1024;
       for (int iy = 1; iy <= h2d_chip[i]->GetNbinsY(); iy++)
       {
-        col = h2d_chip[i]->GetXaxis()->GetBinCenter(ix);
-        chipid = col/1024;
-        col = col%1024;
-
-        if ( h2d_chip[i]->GetBinContent(ix, iy) > thresh )
+        if ( h2d_chip[i]->GetBinContent(ix, iy) > mThr )
         {
           tot++;
           if (flip_yaxis)
           {
-            row = 511 - (h2d_chip[i]->GetYaxis()->GetBinCenter(iy));
+            row = h2d_chip[i]->GetYaxis()->GetBinCenter(iy);
           }
           else
           {
-            row = h2d_chip[i]->GetYaxis()->GetBinCenter(iy);
+            row = 511 - h2d_chip[i]->GetYaxis()->GetBinCenter(iy);
           }
           write_mask_file_tb << i << "," << chipid  << "," << col << "," << row << endl;
         }
-        chip_tot = tot - prev_tot;
-        if (col == 1023)
-        {
-          prev_tot = tot; printf("Total pixels masked on stave %i, chip %i: %i\n", i, chipid, chip_tot);
-        }
+      }
+      chip_tot = tot - prev_tot;
+      if (col == 1023)
+      {
+        prev_tot = tot; printf("Total pixels masked on stave %i, chip %i: %i\n", i, chipid, chip_tot);
       }
     }
     sum += tot;
@@ -1141,18 +1110,14 @@ int OM()
             lt.SetTextColor(chipColor[i]);
             lt.DrawLatex(0.5, 0.96, name);
         } // i
-
-        p2d[0]->cd();
-        dead_chip_forward[0]->Draw(); dead_chip_backward[0]->Draw();
-        p2d[2]->cd();
-        dead_chip_forward[0]->Draw(); dead_chip_backward[0]->Draw();
-        dead_chip_forward[3]->Draw(); dead_chip_backward[3]->Draw();
-        dead_chip_forward[6]->Draw(); dead_chip_backward[6]->Draw();
-        dead_chip_forward[7]->Draw(); dead_chip_backward[7]->Draw();
-        dead_chip_forward[8]->Draw(); dead_chip_backward[8]->Draw();
-        p2d[3]->cd();
-        dead_chip_forward[6]->Draw(); dead_chip_backward[6]->Draw();
-
+        for ( int istave = 0; istave < NSTAVE; ++istave )
+        {
+          p2d[istave]->cd();
+          for ( auto& dead_chip : dead_chips[istave] )
+          {
+            dead_chip_forward[dead_chip]->Draw(); dead_chip_backward[dead_chip]->Draw();
+          }
+        }
         initialized = true;
     }
 

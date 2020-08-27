@@ -2,6 +2,8 @@
 
 #include "mvtxOM.h"
 
+#include "pmonitor/pmonitor.h"
+
 R__LOAD_LIBRARY(libmvtxOM)
 
 #endif
@@ -10,9 +12,9 @@ void run_om()
 {
   gSystem->Load("libmvtxOM.so");
   //set_verbose(1);
-  set_refresh(5000);
+  set_refresh(1000);
   rcdaqopen();
-  OM();
   pstart();
+  OM();
   return;
 }

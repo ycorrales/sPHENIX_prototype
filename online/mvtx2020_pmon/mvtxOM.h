@@ -11,9 +11,13 @@ int OM();
 int print_canvas();
 int print_status();
 void reset_histos();
+//set functions
 void set_verbose(int v);
 void set_refresh(int r);
 void set_mask_hit_file_path(const char* aPath);
+void set_beam_fit(bool flag);
+
+int get_nevents();
 void get_alignment();
 
 #endif /* __MVTX_OM_H__ */
