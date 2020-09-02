@@ -1,10 +1,10 @@
 #include "MvtxPrototype2UnpackPRDF.h"
 
-#include <Event/Event.h>
-#include <Event/EventTypes.h>
-#include <Event/packetConstants.h>
-#include <Event/packet.h>
-#include <Event/packet_hbd_fpgashort.h>
+#include </sphenix/u/cdean/software/sphenix_rcdaq/install/include/Event/Event.h>
+#include </sphenix/u/cdean/software/sphenix_rcdaq/install/include/Event/EventTypes.h>
+#include </sphenix/u/cdean/software/sphenix_rcdaq/install/include/Event/packetConstants.h>
+#include </sphenix/u/cdean/software/sphenix_rcdaq/install/include/Event/packet.h>
+#include </sphenix/u/cdean/software/sphenix_rcdaq/install/include/Event/packet_hbd_fpgashort.h>
 #include <phool/PHCompositeNode.h>
 #include <phool/phool.h>
 #include <phool/getClass.h>
@@ -26,8 +26,10 @@
 
 using namespace std;
 
-map< pair< int, int>, pair< int, int> > MvtxPrototype2UnpackPRDF::s_map_chips =
-{
+map< pair< int, int>, pair< int, int> > MvtxPrototype2UnpackPRDF::s_map_chips;
+/*
+if (m_data_is_TB2019) 
+s_map_chips = {
   {{1,1}, {0,0}},
   {{1,2}, {0,1}},
   {{1,3}, {0,2}},
@@ -69,8 +71,40 @@ map< pair< int, int>, pair< int, int> > MvtxPrototype2UnpackPRDF::s_map_chips =
   //C105
   //C104
   //A105
-}; //<ruid, ruch> to <stave, chipID>
-
+  };
+else 
+s_map_chips = {
+  {{1, 1}, {0,2}},
+  {{1, 2}, {0,1}},
+  {{1, 3}, {0,0}},
+  {{1, 4}, {0,3}},
+  {{1, 5}, {0,4}},
+  {{1, 6}, {0,5}},
+  {{1, 8}, {0,7}},
+  {{1, 9}, {0,8}},
+  {{2, 1}, {0,2}},
+  {{2, 2}, {0,1}},
+  {{2, 5}, {0,4}},
+  {{2, 6}, {0,5}},
+  {{3, 1}, {0,2}},
+  {{3, 2}, {0,1}},
+  {{3, 3}, {0,0}},
+  {{3, 4}, {0,3}},
+  {{3, 5}, {0,4}},
+  {{3, 6}, {0,5}},
+  {{3, 7}, {0,6}},
+  {{3, 8}, {0,7}},
+  {{3, 9}, {0,8}},
+  {{4, 1}, {0,2}},
+  {{4, 2}, {0,1}},
+  {{4, 4}, {0,3}},
+  {{4, 5}, {0,4}},
+  {{4, 6}, {0,5}},
+  {{4, 7}, {0,6}},
+  {{4, 8}, {0,7}},
+  {{4, 9}, {0,8}}
+  }; //<ruid, ruch> to <stave, chipID>
+*/
 /**
  * Layers order in geom
  * A105 -> layer 0, stave 0
@@ -84,6 +118,7 @@ map<int, int> MvtxPrototype2UnpackPRDF::s_map_layers = { {0,0}, {1,1}, {2,2}, {3
 //____________________________________
 MvtxPrototype2UnpackPRDF::MvtxPrototype2UnpackPRDF() :
     SubsysReco("MvtxPrototype2UnpackPRDF"),
+    /*bool*/m_data_is_TB2019(true),
     /*PHCompositeNode **/ dstNode(NULL),
     /*Event**/_event(NULL),
     /*Packet_hbd_fpgashort**/_packet(NULL),
@@ -104,6 +139,89 @@ MvtxPrototype2UnpackPRDF::Init(PHCompositeNode *topNode)
 {
 
   cout << "-----MvtxPrototype2UnpackPRDF::Init-----" << endl;
+
+if (m_data_is_TB2019) 
+{
+  printf("-----The chip map is set to the 2019 test beam-----\n");
+  s_map_chips = {
+  {{1,1}, {0,0}},
+  {{1,2}, {0,1}},
+  {{1,3}, {0,2}},
+  {{1,4}, {0,3}},
+  {{1,5}, {0,4}},
+  {{1,6}, {0,5}},
+  {{1,7}, {0,6}},
+  {{1,8}, {0,7}},
+  {{1,9}, {3,8}},
+  {{1,10}, {3,7}},
+  {{1,11}, {3,6}},
+  {{1,12}, {3,5}},
+  {{1,13}, {3,4}},
+  {{1,14}, {3,3}},
+  {{1,15}, {3,2}},
+  {{1,16}, {3,1}},
+  {{1,17}, {3,0}},
+  {{1,18}, {2,8}},
+  {{1,19}, {2,7}},
+  {{1,20}, {2,6}},
+  {{1,21}, {2,5}},
+  {{1,22}, {2,4}},
+  {{1,23}, {2,3}},
+  {{1,24}, {2,2}},
+  {{1,25}, {2,1}},
+  {{1,26}, {2,0}},
+  {{1,27}, {0,8}},
+  {{2,1}, {1,2}},
+  {{2,2}, {1,1}},
+  {{2,3}, {1,0}},
+  {{2,4}, {1,3}},
+  {{2,5}, {1,4}},
+  {{2,6}, {1,5}},
+  {{2,7}, {1,6}},
+  {{2,8}, {1,7}},
+  {{2,9}, {1,8}}
+  //order
+  //E103
+  //C105
+  //C104
+  //A105
+  };
+}
+else 
+{ 
+  printf("-----The chip map is set to the 2020 cosmic run-----\n");
+  s_map_chips = {
+  {{1, 1}, {0,2}},
+  {{1, 2}, {0,1}},
+  {{1, 3}, {0,0}},
+  {{1, 4}, {0,3}},
+  {{1, 5}, {0,4}},
+  {{1, 6}, {0,5}},
+  {{1, 8}, {0,7}},
+  {{1, 9}, {0,8}},
+  {{2, 1}, {1,2}},
+  {{2, 2}, {1,1}},
+  {{2, 5}, {1,4}},
+  {{2, 6}, {1,5}},
+  {{3, 1}, {2,2}},
+  {{3, 2}, {2,1}},
+  {{3, 3}, {2,0}},
+  {{3, 4}, {2,3}},
+  {{3, 5}, {2,4}},
+  {{3, 6}, {2,5}},
+  {{3, 7}, {2,6}},
+  {{3, 8}, {2,7}},
+  {{3, 9}, {2,8}},
+  {{4, 1}, {3,2}},
+  {{4, 2}, {3,1}},
+  {{4, 4}, {3,3}},
+  {{4, 5}, {3,4}},
+  {{4, 6}, {3,5}},
+  {{4, 7}, {3,6}},
+  {{4, 8}, {3,7}},
+  {{4, 9}, {3,8}},
+  }; //<ruid, ruch> to <stave, chipID>
+}
   return Fun4AllReturnCodes::EVENT_OK;
 }
 
@@ -259,6 +377,9 @@ MvtxPrototype2UnpackPRDF::CreateNodeTree(PHCompositeNode *topNode)
 void
 MvtxPrototype2UnpackPRDF::MakeHits()
 {
+
+  int NMAXRU = 2;
+  if (!m_data_is_TB2019) NMAXRU = 4;
 
   //int nhits_for_this = 0;
   Packet *p = _event->getPacket(2000);

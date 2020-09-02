@@ -3,7 +3,7 @@
 #ifndef MVTX_TB_SETUP_STAVE_GEOM_H
 #define MVTX_TB_SETUP_STAVE_GEOM_H
 
-#define NMAXRU 2
+//#define NMAXRU 4
 #define NMAXRUCHN 28
 #define NLAYER 4
 #define NCHIP 9

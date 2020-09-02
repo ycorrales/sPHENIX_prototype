@@ -40,6 +40,12 @@ public:
   int DecodeRow(int val) const;
   int DecodeCol(int val) const;
 
+  void isDataTB2019(bool testBeamData) { m_data_is_TB2019 = testBeamData; }
+
+protected:
+  
+  bool m_data_is_TB2019;
+
 private:
 
   PHCompositeNode* dstNode;

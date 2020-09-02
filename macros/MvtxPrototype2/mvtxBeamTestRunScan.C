@@ -1,5 +1,5 @@
 //#ifdef __cline__
-#include "mvtxOM.h"
+#include "online/mvtx2020_pmon/mvtxOM.h"
 //R__LOAD_LIBRARY(libpmonitor)
 R__LOAD_LIBRARY(libmvtxOM)
 //#endif

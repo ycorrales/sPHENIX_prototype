@@ -25,8 +25,8 @@ R__LOAD_LIBRARY(libanamvtxtestbeam2019.so)
 using namespace std;
 
 void Fun4All_TestBeam(
-		int nEvents = 10,
-		const string &input_file = "calib-00000648-0000.prdf")
+		int nEvents = 4000,
+		const string &input_file = "/gpfs/mnt/gpfs02/sphenix/user/mxliu/telescope/Cosmic-2020/test_00001639-0000.prdf")
 {
   gSystem->Load("libfun4all");
   gSystem->Load("libfun4allraw");
@@ -54,7 +54,8 @@ void Fun4All_TestBeam(
 
 	//Unpack
 	MvtxPrototype2UnpackPRDF *unpack = new MvtxPrototype2UnpackPRDF();
-	unpack->Verbosity(1);
+        unpack->isDataTB2019(0);
+	unpack->Verbosity(10);
 	se->registerSubsystem(unpack);
 
 	/*
