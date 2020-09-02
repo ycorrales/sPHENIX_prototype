@@ -36,6 +36,8 @@ void Fun4All_TestBeam(
   Fun4AllServer *se = Fun4AllServer::instance();
   se->Verbosity(Fun4AllServer::VERBOSITY_SOME);
 
+  bool data_is_test_beam = false;
+
 	char ifile[input_file.length()+1]; // + 1 for the \0 which marks the end of string
 	strcpy(ifile, input_file.c_str());
 	strtok(ifile,"-");
@@ -54,7 +56,7 @@ void Fun4All_TestBeam(
 
 	//Unpack
 	MvtxPrototype2UnpackPRDF *unpack = new MvtxPrototype2UnpackPRDF();
-        unpack->isDataTB2019(0);
+        unpack->isDataTB2019(data_is_test_beam);
 	unpack->Verbosity(10);
 	se->registerSubsystem(unpack);
 
@@ -88,8 +90,8 @@ void Fun4All_TestBeam(
   {
 
     AnaMvtxTestBeam2019 *eval = new AnaMvtxTestBeam2019();
-	  eval->set_out_filename(Form("MvtxBT2019Eval-%08d-%04d.root",
-                           runnumber,segnumber+200));
+	  if (data_is_test_beam) eval->set_out_filename(Form("MvtxBT2019Eval-%08d-%04d.root", runnumber,segnumber+200));
+	  else eval->set_out_filename(Form("MvtxCosmicEval-%08d-%04d.root", runnumber,segnumber+200));
     eval->Verbosity(0);
     eval->set_ref_align_stave(0);
     eval->set_do_tracking(do_standalone_tracking);

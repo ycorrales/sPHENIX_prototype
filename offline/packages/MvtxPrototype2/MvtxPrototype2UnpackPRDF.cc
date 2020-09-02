@@ -1,10 +1,10 @@
 #include "MvtxPrototype2UnpackPRDF.h"
 
-#include </sphenix/u/cdean/software/sphenix_rcdaq/install/include/Event/Event.h>
-#include </sphenix/u/cdean/software/sphenix_rcdaq/install/include/Event/EventTypes.h>
-#include </sphenix/u/cdean/software/sphenix_rcdaq/install/include/Event/packetConstants.h>
-#include </sphenix/u/cdean/software/sphenix_rcdaq/install/include/Event/packet.h>
-#include </sphenix/u/cdean/software/sphenix_rcdaq/install/include/Event/packet_hbd_fpgashort.h>
+#include <Event/Event.h>
+#include <Event/EventTypes.h>
+#include <Event/packetConstants.h>
+#include <Event/packet.h>
+#include <Event/packet_hbd_fpgashort.h>
 #include <phool/PHCompositeNode.h>
 #include <phool/phool.h>
 #include <phool/getClass.h>
